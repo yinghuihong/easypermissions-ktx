@@ -17,7 +17,11 @@ package com.vmadalin.easypermissions.sample
 
 import android.Manifest.permission.*
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
@@ -141,17 +145,30 @@ class MainActivity : AppCompatActivity(),
 
     @AfterPermissionGranted(REQUEST_CODE_STORAGE_PERMISSION)
     private fun onClickRequestPermissionStorageButton() {
-        if (hasCameraPermission()) {
+        if (hasStoragePermission()) {
             // Have permission, do things!
             Toast.makeText(this, "TODO: Storage things", LENGTH_LONG).show()
         } else {
             // Ask for one permission
-            EasyPermissions.requestPermissions(
-                this,
-                getString(R.string.permission_storage_rationale_message),
-                REQUEST_CODE_STORAGE_PERMISSION,
-                WRITE_EXTERNAL_STORAGE
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // https://developer.android.com/training/data-storage/manage-all-files
+                // https://stackoverflow.com/questions/65876736/how-do-you-request-manage-external-storage-permission-in-android
+                val uri = Uri.parse("package:${BuildConfig.APPLICATION_ID}")
+
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        uri
+                    )
+                )
+            } else {
+                EasyPermissions.requestPermissions(
+                    this,
+                    getString(R.string.permission_storage_rationale_message),
+                    REQUEST_CODE_STORAGE_PERMISSION,
+                    WRITE_EXTERNAL_STORAGE
+                )
+            }
         }
     }
 
@@ -184,6 +201,10 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun hasStoragePermission(): Boolean {
-        return EasyPermissions.hasPermissions(this, WRITE_EXTERNAL_STORAGE)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            EasyPermissions.hasPermissions(this, WRITE_EXTERNAL_STORAGE)
+        }
     }
 }
